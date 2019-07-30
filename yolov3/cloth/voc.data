@@ -1,0 +1,5 @@
+classes= 1
+train  = /disk5/zhaoliang/ClothDataSet/2007_train.txt
+valid  = /disk5/zhaoliang/ClothDataSet/2007_test.txt
+names = /disk2/zhaoliang/Projects/darknet/darknetAB/cloth/voc.names
+backup = /disk2/zhaoliang/Projects/darknet/darknetAB/cloth/backup
