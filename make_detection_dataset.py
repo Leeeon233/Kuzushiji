@@ -13,8 +13,7 @@ VIS = False
 
 
 def resize_img_box(img, labels):
-    img_size = img.shape[0]
-    scale = C.INPUT_IMAGE_SIZE / img_size
+    scale = C.INPUT_IMAGE_SIZE / C.CROP_IMAGE_SIZE
     resize_img = cv2.resize(img, (C.INPUT_IMAGE_SIZE, C.INPUT_IMAGE_SIZE))
     labels = labels * scale
     return resize_img, labels
@@ -81,13 +80,13 @@ def convert(size, box):
 
 
 def save_img_label(img, label, file_name):
-    size = img.shape
+    h, w, c = img.shape
     cv2.imwrite(os.path.join(C.CROP_TRAIN_IMAGES, file_name + '.jpg'), img)
 
     with open(os.path.join(C.CROP_TRAIN_IMAGES, f'{file_name}.txt'), 'w') as f:
         for box in label:
             x_min, x_max, y_min, y_max = box[0],  box[0] + box[2], box[1], box[1] + box[3]
-            bb = convert(size, [x_min, x_max, y_min, y_max])
+            bb = convert((w, h), [x_min, x_max, y_min, y_max])
             f.write("0" + " " + " ".join([str(a) for a in bb]) + '\n')
 
     with open(C.TRAIN_FILE, 'a') as train_file:
