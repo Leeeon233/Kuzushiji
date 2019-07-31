@@ -40,7 +40,7 @@ def parse_args():
                         help='the directory to be saved')
     parser.add_argument('--csv-file', dest='csv_file', type=str, default="",
                         help='training log file')
-    parser.add_argument('--log-file', dest='log_file', type=str, default="/disk2/zhaoliang/Projects/darknet/darknetAB/test_four.log",
+    parser.add_argument('--log-file', dest='log_file', type=str, default="",
                         help='training log file')
     parser.add_argument('--show', dest='show_plot', type=bool, default=False,
                         help='whether to show')
