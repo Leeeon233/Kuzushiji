@@ -38,6 +38,12 @@ def crop_ori_img(img_path, labels):
             # TODO
             crop_labels = get_croped_label(cur_x, cur_y, labels)
             if len(crop_labels) == 0:
+                if flag_x:
+                    break
+                cur_x += int(img_size * (1 - over_lap))
+                if cur_x + img_size > w:
+                    cur_x = w - img_size
+                    flag_x = True
                 continue
 
             crop_img, crop_labels = resize_img_box(crop_img, crop_labels)
@@ -61,26 +67,26 @@ def crop_ori_img(img_path, labels):
 
 
 def convert(size, box):
-    dw = 1./(size[0])
-    dh = 1./(size[1])
-    x = (box[0] + box[1])/2.0 - 1
-    y = (box[2] + box[3])/2.0 - 1
+    dw = 1. / (size[0])
+    dh = 1. / (size[1])
+    x = (box[0] + box[1]) / 2.0 - 1
+    y = (box[2] + box[3]) / 2.0 - 1
     w = box[1] - box[0]
     h = box[3] - box[2]
-    x = x*dw
-    w = w*dw
-    y = y*dh
-    h = h*dh
-    return (x,y,w,h)
+    x = x * dw
+    w = w * dw
+    y = y * dh
+    h = h * dh
+    return (x, y, w, h)
 
 
 def save_img_label(img, label, file_name):
     size = img.shape
     cv2.imwrite(os.path.join(C.CROP_TRAIN_IMAGES, file_name + '.jpg'), img)
 
-    with open(os.path.join(C.CROP_TRAIN_IMAGES,f'{file_name}.txt'), 'w') as f:
+    with open(os.path.join(C.CROP_TRAIN_IMAGES, f'{file_name}.txt'), 'w') as f:
         for box in label:
-            x_min, x_max, y_min, y_max = box[0], box[1], box[0]+box[2], box[1]+box[3]
+            x_min, x_max, y_min, y_max = box[0],  box[0] + box[2], box[1], box[1] + box[3]
             bb = convert(size, [x_min, x_max, y_min, y_max])
             f.write("0" + " " + " ".join([str(a) for a in bb]) + '\n')
 
@@ -90,6 +96,7 @@ def save_img_label(img, label, file_name):
                 val_file.write(os.path.join(C.CROP_TRAIN_IMAGES, file_name + '.jpg') + '\n')
             else:
                 train_file.write(os.path.join(C.CROP_TRAIN_IMAGES, file_name + '.jpg') + '\n')
+
 
 def get_croped_label(x, y, labels):
     result = []
