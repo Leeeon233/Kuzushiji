@@ -31,7 +31,7 @@ from ctypes import *
 import math
 import random
 import os
-
+os.environ["CUDA_VISIBLE_DEVICES"]='3'
 
 def sample(probs):
     s = sum(probs)
@@ -447,9 +447,7 @@ def performDetect(imagePath="data/dog.jpg", thresh=0.25, configPath="./cfg/yolov
                 draw.set_color(image, (rr3, cc3), boxColor, alpha=0.8)
                 draw.set_color(image, (rr4, cc4), boxColor, alpha=0.8)
                 draw.set_color(image, (rr5, cc5), boxColor, alpha=0.8)
-            if not makeImageOnly:
-                io.imshow(image)
-                io.show()
+                io.imsave('res.jpg', image)
             detections = {
                 "detections": detections,
                 "image": image,
@@ -460,5 +458,141 @@ def performDetect(imagePath="data/dog.jpg", thresh=0.25, configPath="./cfg/yolov
     return detections
 
 
+# Custom
+
+from utils import crop_ori_img_scale, merge_sub_bbox, nms
+import cv2
+import numpy as np
+from scipy.misc import imread, imsave
+
+class Detector:
+    def __init__(self, thresh=0.25, weight_path="yolov3.weights", config_path="./kanji/train.cfg", meta_path="./kanji/kanji.data"):
+        self.thresh = thresh
+        self.weight_path = weight_path
+        self.config_path = config_path
+        self.meta_path = meta_path
+        self.netMain = None
+        self.metaMain = None
+        self.altNames = None
+        self._init_model()
+
+    def _init_model(self):
+
+        assert 0 < self.thresh < 1, "Threshold should be a float between zero and one (non-inclusive)"
+        if not os.path.exists(self.config_path):
+            raise ValueError("Invalid config path `" + os.path.abspath(self.config_path) + "`")
+        if not os.path.exists(self.weight_path):
+            raise ValueError("Invalid weight path `" + os.path.abspath(self.weight_path) + "`")
+        if not os.path.exists(self.meta_path):
+            raise ValueError("Invalid data file path `" + os.path.abspath(self.meta_path) + "`")
+        if self.netMain is None:
+            self.netMain = load_net_custom(self.config_path.encode("ascii"), self.weight_path.encode("ascii"), 0, 1)  # batch size = 1
+        if self.metaMain is None:
+            self.metaMain = load_meta(self.meta_path.encode("ascii"))
+        if self.altNames is None:
+            # In Python 3, the metafile default access craps out on Windows (but not Linux)
+            # Read the names file and create a list to feed to detect
+            try:
+                with open(self.meta_path) as metaFH:
+                    metaContents = metaFH.read()
+                    import re
+                    match = re.search("names *= *(.*)$", metaContents, re.IGNORECASE | re.MULTILINE)
+                    if match:
+                        result = match.group(1)
+                    else:
+                        result = None
+                    try:
+                        if os.path.exists(result):
+                            with open(result) as namesFH:
+                                namesList = namesFH.read().strip().split("\n")
+                                self.altNames = [x.strip() for x in namesList]
+                    except TypeError:
+                        pass
+            except Exception:
+                pass
+
+    def _vis_detections(self, im, boxes, scores):
+        """Visual debugging of detections."""
+        for score, box in zip(scores, boxes):
+            bbox = tuple(int(np.round(x)) for x in box)
+            x = int(bbox[0]-bbox[2]/2)
+            y = int(bbox[1]-bbox[3]/2)
+            xs = bbox[2]
+            ys = bbox[3]
+            cv2.rectangle(im, (x, y), (x+xs, y+ys), (0, 255, 0), 6) # (bbox[0]+bbox[2], bbox[1]+bbox[3])
+            cv2.putText(im, 'kanji: %.3f' % (score), (bbox[0], bbox[1] + 15), cv2.FONT_HERSHEY_PLAIN,
+                        1.0, (0, 0, 255), thickness=1)
+        return im
+
+    def detect_one_image(self, image_path, save_path=None):
+        if not os.path.exists(image_path):
+            raise ValueError("Invalid image path `" + os.path.abspath(image_path) + "`")
+        # Do the detection
+        # detections = detect(netMain, metaMain, imagePath, thresh)	# if is used cv2.imread(image)
+
+        img = cv2.imread(image_path)
+        h, w, c = img.shape
+        img = cv2.resize(img, (int(w * C.INPUT_IMAGE_SIZE / C.CROP_IMAGE_SIZE), int(h * C.INPUT_IMAGE_SIZE / C.CROP_IMAGE_SIZE)))
+        # # cv2.imwrite('tmp_img/resize.jpg', img)
+        # cv2.imwrite(f'tmp_img/resize_{img_path[-6:]}.jpg',image)
+        # img = cv2.imread(f'tmp_img/resize_{img_path[-6:]}.jpg')
+        crop_imgs, points = crop_ori_img_scale(img)
+        final_scores = []
+        final_boxes = []
+        final_points = []
+        print(points)
+        for idx, (crop_img, point) in enumerate(zip(crop_imgs, points)):
+            tmp_path = f'tmp_img/tmp_{idx}.jpg'
+            box = []
+            score = []
+            cv2.imwrite(tmp_path, crop_img)
+            # res = performDetect(tmp_path,
+            #                     configPath='cloth/train.cfg',
+            #                     metaPath='cloth/voc.data',
+            #                     weightPath=weight_path,
+            #                     thresh=0.01,
+            #                     showImage=False
+            #                     )
+            detections = detect(self.netMain, self.metaMain, tmp_path.encode("ascii"), self.thresh)
+            if len(detections) > 0:
+                for det in detections:
+                    score.append(det[1])
+                    box.append(det[2])
+
+            save_img = self._vis_detections(cv2.imread(tmp_path), box, score)
+            cv2.imwrite(tmp_path, save_img)
+
+
+            final_scores.append(score)
+            final_boxes.append(box)
+            final_points.append(point)
+        final_boxes, final_scores = merge_sub_bbox(
+            final_boxes, final_scores, final_points
+        )
+        print("nms前:  ", len(final_boxes))
+        final_boxes, final_scores = nms(final_boxes, final_scores, 0.5)
+        print("检测出： ", len(final_boxes))
+        if save_path:
+            save_img = self._vis_detections(img, final_boxes, final_scores)
+            cv2.imwrite(save_path, save_img)
+
+
+
+
+
+
 if __name__ == "__main__":
-    print(performDetect())
+    import config as C
+    from tqdm import tqdm
+    detector = Detector(thresh=0.75, weight_path='/disk2/zhaoliang/projects/Kuzushiji/yolov3/backup/train_last.weights')
+    # for file_name in tqdm(os.listdir(C.TRAIN_IMAGES)):
+    file_name = os.listdir(C.TRAIN_IMAGES)[0]
+    img_path = os.path.join(C.TRAIN_IMAGES, file_name)
+    # file_name = os.path.basename(img_path)
+    detector.detect_one_image(img_path, os.path.join(C.VIS_SAVE_ROOT, file_name))
+    # performDetect(
+    #     '/disk2/zhaoliang/projects/Kuzushiji/yolov3/tmp_img/tmp_0.jpg',
+    #     configPath='./kanji/train.cfg',
+    #     weightPath='backup/train_last.weights',
+    #     metaPath='kanji/kanji.data'
+    # )

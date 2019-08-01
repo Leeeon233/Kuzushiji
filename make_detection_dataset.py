@@ -76,7 +76,7 @@ def convert(size, box):
     w = w * dw
     y = y * dh
     h = h * dh
-    return (x, y, w, h)
+    return x, y, w, h
 
 
 def save_img_label(img, label, file_name):
@@ -91,10 +91,11 @@ def save_img_label(img, label, file_name):
 
     with open(C.TRAIN_FILE, 'a') as train_file:
         with open(C.VAL_FILE, 'a') as val_file:
-            if np.random.randint(0, 9) < 2:
-                val_file.write(os.path.join(C.CROP_TRAIN_IMAGES, file_name + '.jpg') + '\n')
-            else:
-                train_file.write(os.path.join(C.CROP_TRAIN_IMAGES, file_name + '.jpg') + '\n')
+            train_file.write(os.path.join(C.CROP_TRAIN_IMAGES, file_name + '.jpg') + '\n')
+            # if np.random.randint(0, 9) < 1:
+            #     val_file.write(os.path.join(C.CROP_TRAIN_IMAGES, file_name + '.jpg') + '\n')
+            # else:
+            #     train_file.write(os.path.join(C.CROP_TRAIN_IMAGES, file_name + '.jpg') + '\n')
 
 
 def get_croped_label(x, y, labels):

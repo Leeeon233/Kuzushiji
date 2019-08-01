@@ -14,3 +14,6 @@ VAL_FILE = os.path.join(DATA_ROOT, 'val.txt')
 CROP_IMAGE_SIZE = 1280
 CROP_IMAGE_OVERLAP = 0.7
 INPUT_IMAGE_SIZE = 608
+
+# detection
+VIS_SAVE_ROOT = '/disk2/zhaoliang/projects/Kuzushiji/perform'

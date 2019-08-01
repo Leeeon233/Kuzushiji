@@ -34,13 +34,13 @@ def show_message(message, stop=False):
 
 def parse_args():
     parser = argparse.ArgumentParser(description="training log parser by DeepKeeper ")
-    parser.add_argument('--source-dir', dest='source_dir', type=str, default='./',
+    parser.add_argument('--source-dir', dest='source_dir', type=str, default='/disk2/zhaoliang/projects/Kuzushiji/yolov3',
                         help='the log source directory')
     parser.add_argument('--save-dir', dest='save_dir', type=str, default='./',
                         help='the directory to be saved')
     parser.add_argument('--csv-file', dest='csv_file', type=str, default="",
                         help='training log file')
-    parser.add_argument('--log-file', dest='log_file', type=str, default="",
+    parser.add_argument('--log-file', dest='log_file', type=str, default="first_7_31_11.log",
                         help='training log file')
     parser.add_argument('--show', dest='show_plot', type=bool, default=False,
                         help='whether to show')
@@ -62,7 +62,7 @@ def log_parser(args):
     losses = []
     fig, ax = plt.subplots()
     # set area we focus on
-    ax.set_ylim(0, 8)
+    ax.set_ylim(0, 30)
 
     major_locator = MultipleLocator()
     minor_locator = MultipleLocator(0.5)
