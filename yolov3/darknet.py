@@ -31,6 +31,7 @@ from ctypes import *
 import math
 import random
 import os
+import config as C
 os.environ["CUDA_VISIBLE_DEVICES"]='3'
 
 def sample(probs):
@@ -124,7 +125,7 @@ if os.name == "nt":
             print(
                 "Environment variables indicated a CPU run, but we didn't find `" + winNoGPUdll + "`. Trying a GPU run anyway.")
 else:
-    lib = CDLL("./libdarknet.so", RTLD_GLOBAL)
+    lib = CDLL(C.LIB_SO_PATH, RTLD_GLOBAL)
 lib.network_width.argtypes = [c_void_p]
 lib.network_width.restype = c_int
 lib.network_height.argtypes = [c_void_p]
@@ -460,7 +461,7 @@ def performDetect(imagePath="data/dog.jpg", thresh=0.25, configPath="./cfg/yolov
 
 # Custom
 
-from utils import crop_ori_img_scale, merge_sub_bbox, nms
+from utils import crop_ori_img_scale, merge_sub_bbox, nms, non_max_suppression_fast
 import cv2
 import numpy as np
 from scipy.misc import imread, imsave
@@ -524,6 +525,22 @@ class Detector:
                         1.0, (0, 0, 255), thickness=1)
         return im
 
+    def remove_repeat(self, boxes):
+        num = len(boxes)
+        for box in boxes:
+            center_x = box[0]
+            center_y = box[1]
+            w = box[2]
+            h = box[3]
+            sx = center_x - w/2
+            sy = center_y - h/2
+            ex = center_x + w/2
+            ey = center_x - w/2
+
+
+
+
+
     def detect_one_image(self, image_path, save_path=None):
         if not os.path.exists(image_path):
             raise ValueError("Invalid image path `" + os.path.abspath(image_path) + "`")
@@ -540,19 +557,11 @@ class Detector:
         final_scores = []
         final_boxes = []
         final_points = []
-        print(points)
         for idx, (crop_img, point) in enumerate(zip(crop_imgs, points)):
-            tmp_path = f'tmp_img/tmp_{idx}.jpg'
+            tmp_path = 'tmp.jpg'
             box = []
             score = []
             cv2.imwrite(tmp_path, crop_img)
-            # res = performDetect(tmp_path,
-            #                     configPath='cloth/train.cfg',
-            #                     metaPath='cloth/voc.data',
-            #                     weightPath=weight_path,
-            #                     thresh=0.01,
-            #                     showImage=False
-            #                     )
             detections = detect(self.netMain, self.metaMain, tmp_path.encode("ascii"), self.thresh)
             if len(detections) > 0:
                 for det in detections:
@@ -562,16 +571,17 @@ class Detector:
             save_img = self._vis_detections(cv2.imread(tmp_path), box, score)
             cv2.imwrite(tmp_path, save_img)
 
-
             final_scores.append(score)
             final_boxes.append(box)
             final_points.append(point)
         final_boxes, final_scores = merge_sub_bbox(
             final_boxes, final_scores, final_points
         )
-        print("nms前:  ", len(final_boxes))
-        final_boxes, final_scores = nms(final_boxes, final_scores, 0.5)
-        print("检测出： ", len(final_boxes))
+        # print("nms前:  ", len(final_boxes))
+        if len(final_boxes) == 0:
+            return []
+        # final_boxes, final_scores = non_max_suppression_fast(final_boxes, final_scores, 0.5)
+        # print("检测出： ", len(final_boxes))
         if save_path:
             save_img = self._vis_detections(img, final_boxes, final_scores)
             cv2.imwrite(save_path, save_img)
@@ -582,7 +592,6 @@ class Detector:
 
 
 if __name__ == "__main__":
-    import config as C
     from tqdm import tqdm
     detector = Detector(thresh=0.75, weight_path='/disk2/zhaoliang/projects/Kuzushiji/yolov3/backup_all/train_best.weights')
     # for file_name in tqdm(os.listdir(C.TRAIN_IMAGES)):

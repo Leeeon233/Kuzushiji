@@ -24,11 +24,11 @@ avg_train_losses = []
 # to track the average validation loss per epoch as the model trains
 avg_valid_losses = []
 
-optimizer = torch.optim.Adam(model.parameters())
+optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 early_stopping = EarlyStopping(patience=20, verbose=True)
 tbs = 0
 vbs = 0
-# model.load_state_dict(torch.load('checkpoint.pt'))
+model.load_state_dict(torch.load('checkpoint.pt'))
 print("开始训练")
 loss_fn = torch.nn.CrossEntropyLoss()
 for epoch in range(C.EPOCHES):

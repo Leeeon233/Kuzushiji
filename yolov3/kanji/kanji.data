@@ -1,6 +1,6 @@
 classes= 1
 train  = /disk2/zhaoliang/datasets/Kuzushiji/train.txt
 valid  = /disk2/zhaoliang/datasets/Kuzushiji/val.txt
-names = kanji/kanji.names
+names = /disk2/zhaoliang/projects/Kuzushiji/yolov3/kanji/kanji.names
 backup = backup_all/
 
