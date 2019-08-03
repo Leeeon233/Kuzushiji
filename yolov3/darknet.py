@@ -32,7 +32,9 @@ import math
 import random
 import os
 import config as C
-os.environ["CUDA_VISIBLE_DEVICES"]='3'
+
+os.environ["CUDA_VISIBLE_DEVICES"] = '2'
+
 
 def sample(probs):
     s = sum(probs)
@@ -466,8 +468,10 @@ import cv2
 import numpy as np
 from scipy.misc import imread, imsave
 
+
 class Detector:
-    def __init__(self, thresh=0.25, weight_path="yolov3.weights", config_path="./kanji/train.cfg", meta_path="./kanji/kanji.data"):
+    def __init__(self, thresh=0.25, weight_path="yolov3.weights", config_path="./kanji/train.cfg",
+                 meta_path="./kanji/kanji.data"):
         self.thresh = thresh
         self.weight_path = weight_path
         self.config_path = config_path
@@ -487,7 +491,8 @@ class Detector:
         if not os.path.exists(self.meta_path):
             raise ValueError("Invalid data file path `" + os.path.abspath(self.meta_path) + "`")
         if self.netMain is None:
-            self.netMain = load_net_custom(self.config_path.encode("ascii"), self.weight_path.encode("ascii"), 0, 1)  # batch size = 1
+            self.netMain = load_net_custom(self.config_path.encode("ascii"), self.weight_path.encode("ascii"), 0,
+                                           1)  # batch size = 1
         if self.metaMain is None:
             self.metaMain = load_meta(self.meta_path.encode("ascii"))
         if self.altNames is None:
@@ -516,30 +521,77 @@ class Detector:
         """Visual debugging of detections."""
         for score, box in zip(scores, boxes):
             bbox = tuple(int(np.round(x)) for x in box)
-            x = int(bbox[0]-bbox[2]/2)
-            y = int(bbox[1]-bbox[3]/2)
+            x = int(bbox[0] - bbox[2] / 2)
+            y = int(bbox[1] - bbox[3] / 2)
             xs = bbox[2]
             ys = bbox[3]
-            cv2.rectangle(im, (x, y), (x+xs, y+ys), (0, 255, 0), 6) # (bbox[0]+bbox[2], bbox[1]+bbox[3])
+            cv2.rectangle(im, (x, y), (x + xs, y + ys), (0, 255, 0), 6)  # (bbox[0]+bbox[2], bbox[1]+bbox[3])
             cv2.putText(im, 'kanji: %.3f' % (score), (bbox[0], bbox[1] + 15), cv2.FONT_HERSHEY_PLAIN,
                         1.0, (0, 0, 255), thickness=1)
         return im
 
-    def remove_repeat(self, boxes):
-        num = len(boxes)
-        for box in boxes:
+    def _compute_iou(self, rec1, rec2):
+        """
+        computing IoU
+        :param rec1: (y0, x0, y1, x1), which reflects
+                (top, left, bottom, right)
+        :param rec2: (y0, x0, y1, x1)
+        :return: scala value of IoU
+        """
+        # computing area of each rectangles
+        S_rec1 = (rec1[2] - rec1[0]) * (rec1[3] - rec1[1])
+        S_rec2 = (rec2[2] - rec2[0]) * (rec2[3] - rec2[1])
+
+        # computing the sum_area
+        sum_area = S_rec1 + S_rec2
+
+        # find the each edge of intersect rectangle
+        left_line = max(rec1[1], rec2[1])
+        right_line = min(rec1[3], rec2[3])
+        top_line = max(rec1[0], rec2[0])
+        bottom_line = min(rec1[2], rec2[2])
+
+        # judge if there is an intersect
+        if left_line >= right_line or top_line >= bottom_line:
+            return 0
+        else:
+            intersect = (right_line - left_line) * (bottom_line - top_line)
+            return intersect / (sum_area - intersect)
+
+    def _remove_repeat(self, boxes, scores):
+        if len(boxes) == 0:
+            return [], []
+        keep = []
+        remove = []
+        for idx, box in enumerate(boxes):
+            if idx in remove:
+                continue
             center_x = box[0]
             center_y = box[1]
             w = box[2]
             h = box[3]
-            sx = center_x - w/2
-            sy = center_y - h/2
-            ex = center_x + w/2
-            ey = center_x - w/2
-
-
-
-
+            sx = center_x - w / 2
+            sy = center_y - h / 2
+            ex = center_x + w / 2
+            ey = center_x - w / 2
+            for _idx, _box in enumerate(boxes):
+                if _idx in remove or idx == _idx:
+                    continue
+                _center_x = _box[0]
+                _center_y = _box[1]
+                _w = _box[2]
+                _h = _box[3]
+                _sx = _center_x - _w / 2
+                _sy = _center_y - _h / 2
+                _ex = _center_x + _w / 2
+                _ey = _center_x - _w / 2
+                iou = self._compute_iou([sy, sx, ey, ex], [_sy, _sx, _ey, _ex])
+                if iou > 0.8:
+                    remove.append(_idx)
+        for i in range(len(boxes)):
+            if i not in remove:
+                keep.append(i)
+        return boxes[keep], scores[keep]
 
     def detect_one_image(self, image_path, save_path=None):
         if not os.path.exists(image_path):
@@ -549,7 +601,8 @@ class Detector:
 
         img = cv2.imread(image_path)
         h, w, c = img.shape
-        img = cv2.resize(img, (int(w * C.INPUT_IMAGE_SIZE / C.CROP_IMAGE_SIZE), int(h * C.INPUT_IMAGE_SIZE / C.CROP_IMAGE_SIZE)))
+        img = cv2.resize(img, (
+            int(w * C.INPUT_IMAGE_SIZE / C.CROP_IMAGE_SIZE), int(h * C.INPUT_IMAGE_SIZE / C.CROP_IMAGE_SIZE)))
         # # cv2.imwrite('tmp_img/resize.jpg', img)
         # cv2.imwrite(f'tmp_img/resize_{img_path[-6:]}.jpg',image)
         # img = cv2.imread(f'tmp_img/resize_{img_path[-6:]}.jpg')
@@ -578,9 +631,10 @@ class Detector:
             final_boxes, final_scores, final_points
         )
         # print("nms前:  ", len(final_boxes))
+
         if len(final_boxes) == 0:
             return []
-        # final_boxes, final_scores = non_max_suppression_fast(final_boxes, final_scores, 0.5)
+        final_boxes, final_scores = self._remove_repeat(final_boxes, final_scores)
         # print("检测出： ", len(final_boxes))
         if save_path:
             save_img = self._vis_detections(img, final_boxes, final_scores)
@@ -588,17 +642,16 @@ class Detector:
         return final_boxes
 
 
-
-
-
 if __name__ == "__main__":
     from tqdm import tqdm
-    detector = Detector(thresh=0.75, weight_path='/disk2/zhaoliang/projects/Kuzushiji/yolov3/backup_all/train_best.weights')
+
+    detector = Detector(thresh=0.85,
+                        weight_path='/disk2/zhaoliang/projects/Kuzushiji/yolov3/backup_all/train_best.weights')
     # for file_name in tqdm(os.listdir(C.TRAIN_IMAGES)):
-    file_name = 'hnsd006-019.jpg'#os.listdir(C.TRAIN_IMAGES)[0]
+    file_name = 'hnsd006-019.jpg'  # os.listdir(C.TRAIN_IMAGES)[0]
     img_path = os.path.join(C.TRAIN_IMAGES, file_name)
     # file_name = os.path.basename(img_path)
-    detector.detect_one_image(img_path, os.path.join(C.VIS_SAVE_ROOT, file_name))
+    detector.detect_one_image(img_path, os.path.join(C.VIS_SAVE_ROOT, "nms.jpg"))
     # performDetect(
     #     '/disk2/zhaoliang/projects/Kuzushiji/yolov3/tmp_img/tmp_0.jpg',
     #     configPath='./kanji/train.cfg',

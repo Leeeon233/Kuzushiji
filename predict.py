@@ -5,8 +5,8 @@ import numpy as np
 import pandas as pd
 
 import config as C
-from classifier import Classifier
-from darknet import Detector
+from classification.classifier import Classifier
+from yolov3.darknet import Detector
 
 os.environ["CUDA_VISIBLE_DEVICES"] = '3'
 
