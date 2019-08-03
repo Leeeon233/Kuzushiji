@@ -575,7 +575,7 @@ class Detector:
         if save_path:
             save_img = self._vis_detections(img, final_boxes, final_scores)
             cv2.imwrite(save_path, save_img)
-
+        return final_boxes
 
 
 
@@ -584,9 +584,9 @@ class Detector:
 if __name__ == "__main__":
     import config as C
     from tqdm import tqdm
-    detector = Detector(thresh=0.75, weight_path='/disk2/zhaoliang/projects/Kuzushiji/yolov3/backup/train_last.weights')
+    detector = Detector(thresh=0.75, weight_path='/disk2/zhaoliang/projects/Kuzushiji/yolov3/backup_all/train_best.weights')
     # for file_name in tqdm(os.listdir(C.TRAIN_IMAGES)):
-    file_name = os.listdir(C.TRAIN_IMAGES)[0]
+    file_name = 'hnsd006-019.jpg'#os.listdir(C.TRAIN_IMAGES)[0]
     img_path = os.path.join(C.TRAIN_IMAGES, file_name)
     # file_name = os.path.basename(img_path)
     detector.detect_one_image(img_path, os.path.join(C.VIS_SAVE_ROOT, file_name))

@@ -40,7 +40,7 @@ def parse_args():
                         help='the directory to be saved')
     parser.add_argument('--csv-file', dest='csv_file', type=str, default="",
                         help='training log file')
-    parser.add_argument('--log-file', dest='log_file', type=str, default="first_7_31_11.log",
+    parser.add_argument('--log-file', dest='log_file', type=str, default="first_8_1_0.log",
                         help='training log file')
     parser.add_argument('--show', dest='show_plot', type=bool, default=False,
                         help='whether to show')
@@ -62,7 +62,7 @@ def log_parser(args):
     losses = []
     fig, ax = plt.subplots()
     # set area we focus on
-    ax.set_ylim(0, 30)
+    ax.set_ylim(0, 8)
 
     major_locator = MultipleLocator()
     minor_locator = MultipleLocator(0.5)
