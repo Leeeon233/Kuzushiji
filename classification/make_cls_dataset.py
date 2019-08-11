@@ -47,7 +47,7 @@ def threshold(img):
 df_char = pd.read_csv(C.CHARS_FREQ_FILE)
 
 
-def crop_all_char(image_name, labels):
+def crop_all_char(image_name, labels, is_train):
     """
     将图片中的全部文字剪裁出来保存到csv中, label 0 是少见类, 所以label从1开始
     :param image_name:
@@ -57,10 +57,7 @@ def crop_all_char(image_name, labels):
     img_path = os.path.join(C.TRAIN_IMAGES, f'{image_name}.jpg')
     labels = np.array(labels.split(' ')).reshape(-1, 5)
     img = cv2.imread(img_path)
-    is_train = 1
     n = 0
-    if np.random.randint(0, 10) < 1:
-        is_train = 0
     for idx, (codepoint, x_min, y_min, w, h) in enumerate(labels):
 
         crop_img_name = f'{image_name}_{idx}'
@@ -89,11 +86,14 @@ def crop_all_char(image_name, labels):
 
 
 def main():
+    with open(C.TRAIN_FILE, 'r') as train:
+        train_ids = list(map(lambda x: x.strip(), train.readlines()))
     df_train = pd.read_csv(C.TRAIN_CSV).dropna()
     sum = len(os.listdir(C.SAVE_ALL_CHARS))
     for idx in tqdm(range(len(df_train))):  #
         img_name, labels = df_train.values[idx]
-        sum += crop_all_char(img_name, labels)
+        is_train = img_name in train_ids
+        sum += crop_all_char(img_name, labels, is_train)
         print(sum)
 
 

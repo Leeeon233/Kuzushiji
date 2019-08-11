@@ -7,7 +7,7 @@ from tqdm import tqdm
 from PIL import Image, ImageDraw, ImageFont
 import matplotlib.pyplot as plt
 
-df_train = pd.read_csv(C.TRAIN_CSV).dropna()
+
 unicode_map = {codepoint: char for codepoint, char in pd.read_csv(C.MAP_CSV).values}
 VIS = False
 
@@ -19,11 +19,11 @@ def resize_img_box(img, labels):
     return resize_img, labels
 
 
-def crop_ori_img(img_path, labels):
+def crop_ori_img(img_path, labels, train):
     img_size = C.CROP_IMAGE_SIZE
     over_lap = C.CROP_IMAGE_OVERLAP
     img_name = os.path.basename(img_path)  # xxx.jpg
-    print(img_name, img_name[:-4])
+    print(img_name)
     img = cv2.imread(img_path)
     n = 0
     h, w, c = img.shape
@@ -48,7 +48,7 @@ def crop_ori_img(img_path, labels):
             crop_img, crop_labels = resize_img_box(crop_img, crop_labels)
             if VIS:
                 visualize_training_data(crop_img, crop_labels, n)
-            save_img_label(crop_img, crop_labels, f'{img_name[:-4]}_{n}')
+            save_img_label(crop_img, crop_labels, f'{img_name[:-4]}_{n}', train)
             n += 1
             #
             if flag_x:
@@ -79,23 +79,26 @@ def convert(size, box):
     return x, y, w, h
 
 
-def save_img_label(img, label, file_name):
+def save_img_label(img, label, file_name, train):
     h, w, c = img.shape
+    if os.path.exists(os.path.join(C.CROP_TRAIN_IMAGES, file_name + '.jpg')):
+        return
     cv2.imwrite(os.path.join(C.CROP_TRAIN_IMAGES, file_name + '.jpg'), img)
 
     with open(os.path.join(C.CROP_TRAIN_IMAGES, f'{file_name}.txt'), 'w') as f:
         for box in label:
-            x_min, x_max, y_min, y_max = box[0],  box[0] + box[2], box[1], box[1] + box[3]
+            x_min, x_max, y_min, y_max = box[0], box[0] + box[2], box[1], box[1] + box[3]
             bb = convert((w, h), [x_min, x_max, y_min, y_max])
             f.write("0" + " " + " ".join([str(a) for a in bb]) + '\n')
 
-    with open(C.TRAIN_FILE, 'a') as train_file:
-        with open(C.VAL_FILE, 'a') as val_file:
-            train_file.write(os.path.join(C.CROP_TRAIN_IMAGES, file_name + '.jpg') + '\n')
-            # if np.random.randint(0, 9) < 1:
-            #     val_file.write(os.path.join(C.CROP_TRAIN_IMAGES, file_name + '.jpg') + '\n')
-            # else:
-            #     train_file.write(os.path.join(C.CROP_TRAIN_IMAGES, file_name + '.jpg') + '\n')
+    file = C.DETECTION_TRAIN_FILE if train else C.DETECTION_VAL_FILE
+
+    with open(file, 'a') as f:
+        f.write(os.path.join(C.CROP_TRAIN_IMAGES, file_name + '.jpg') + '\n')
+        # if np.random.randint(0, 9) < 1:
+        #     val_file.write(os.path.join(C.CROP_TRAIN_IMAGES, file_name + '.jpg') + '\n')
+        # else:
+        #     train_file.write(os.path.join(C.CROP_TRAIN_IMAGES, file_name + '.jpg') + '\n')
 
 
 def get_croped_label(x, y, labels):
@@ -112,18 +115,24 @@ def get_croped_label(x, y, labels):
     return np.array(result)
 
 
-def crop_make_label(img_name, labels):
+def crop_make_label(img_name, labels, train):
     img_path = os.path.join(C.TRAIN_IMAGES, f'{img_name}.jpg')
     labels = np.array(labels.split(' ')).reshape(-1, 5)
     labels = labels[:, 1:]
     # codepoint, x_min, y_min, w, h = labels
-    crop_ori_img(img_path, labels)
+    crop_ori_img(img_path, labels, train)
 
 
 def main():
+    with open(C.TRAIN_FILE, 'r') as train:
+        train_ids = list(map(lambda x: x.strip(), train.readlines()))
+    df_train = pd.read_csv(C.TRAIN_CSV).dropna()
+    # df_train = df_train[df_train['image_id'].isin(train_ids)]
+    # df_val = df_train[df_train['image_id'].isin(val_ids)]
     for idx in tqdm(range(len(df_train))):
         img_name, labels = df_train.values[idx]
-        crop_make_label(img_name, labels)
+        is_train = img_name in train_ids
+        crop_make_label(img_name, labels, is_train)
 
 
 def visualize_training_data(image_fn, labels, n):
