@@ -1,4 +1,4 @@
-from .model import VGG_ResNet
+from classification.model import VGG_ResNet
 import config as C
 import torch
 from torchvision.transforms import ToTensor, Compose

@@ -33,7 +33,7 @@ import random
 import os
 import config as C
 
-os.environ["CUDA_VISIBLE_DEVICES"] = '2'
+# os.environ["CUDA_VISIBLE_DEVICES"] = '2'
 
 
 def sample(probs):
@@ -463,10 +463,9 @@ def performDetect(imagePath="data/dog.jpg", thresh=0.25, configPath="./cfg/yolov
 
 # Custom
 
-from utils import crop_ori_img_scale, merge_sub_bbox, nms, non_max_suppression_fast
+from yolov3.utils import crop_ori_img_scale, merge_sub_bbox, non_max_suppression_fast
 import cv2
 import numpy as np
-from scipy.misc import imread, imsave
 
 
 class Detector:
@@ -563,7 +562,8 @@ class Detector:
             return [], []
         keep = []
         remove = []
-        for idx, box in enumerate(boxes):
+        for idx in range(len(boxes)):
+            box = boxes[idx]
             if idx in remove:
                 continue
             center_x = box[0]
@@ -574,7 +574,8 @@ class Detector:
             sy = center_y - h / 2
             ex = center_x + w / 2
             ey = center_x - w / 2
-            for _idx, _box in enumerate(boxes):
+            for _idx in range(len(boxes)):
+                _box = boxes[_idx]
                 if _idx in remove or idx == _idx:
                     continue
                 _center_x = _box[0]
@@ -586,7 +587,7 @@ class Detector:
                 _ex = _center_x + _w / 2
                 _ey = _center_x - _w / 2
                 iou = self._compute_iou([sy, sx, ey, ex], [_sy, _sx, _ey, _ex])
-                if iou > 0.8:
+                if iou > 0.2:
                     remove.append(_idx)
         for i in range(len(boxes)):
             if i not in remove:
@@ -621,8 +622,8 @@ class Detector:
                     score.append(det[1])
                     box.append(det[2])
 
-            save_img = self._vis_detections(cv2.imread(tmp_path), box, score)
-            cv2.imwrite(tmp_path, save_img)
+            # save_img = self._vis_detections(cv2.imread(tmp_path), box, score)
+            # cv2.imwrite(tmp_path, save_img)
 
             final_scores.append(score)
             final_boxes.append(box)
@@ -630,12 +631,16 @@ class Detector:
         final_boxes, final_scores = merge_sub_bbox(
             final_boxes, final_scores, final_points
         )
-        # print("nms前:  ", len(final_boxes))
+        print("筛选前:  ", len(final_boxes))
 
         if len(final_boxes) == 0:
             return []
-        final_boxes, final_scores = self._remove_repeat(final_boxes, final_scores)
+        # final_boxes, final_scores = self._remove_repeat(final_boxes, final_scores)
+        # final_boxes, final_scores = self._remove_repeat(final_boxes, final_scores)
         # print("检测出： ", len(final_boxes))
+        final_boxes, final_scores = non_max_suppression_fast(final_boxes, final_scores, 0.2)
+        print("nms后检测出： ", len(final_boxes))
+
         if save_path:
             save_img = self._vis_detections(img, final_boxes, final_scores)
             cv2.imwrite(save_path, save_img)
@@ -645,13 +650,14 @@ class Detector:
 if __name__ == "__main__":
     from tqdm import tqdm
 
-    detector = Detector(thresh=0.85,
+    detector = Detector(thresh=0.75,
                         weight_path='/disk2/zhaoliang/projects/Kuzushiji/yolov3/backup_all/train_best.weights')
     # for file_name in tqdm(os.listdir(C.TRAIN_IMAGES)):
-    file_name = 'hnsd006-019.jpg'  # os.listdir(C.TRAIN_IMAGES)[0]
-    img_path = os.path.join(C.TRAIN_IMAGES, file_name)
+    # file_name = 'hnsd006-019.jpg'  # os.listdir(C.TRAIN_IMAGES)[0]
+    # img_path = os.path.join(C.TRAIN_IMAGES, file_name)
+    for file_name in os.listdir(C.TEST_IMAGES)[:10]:
     # file_name = os.path.basename(img_path)
-    detector.detect_one_image(img_path, os.path.join(C.VIS_SAVE_ROOT, "nms.jpg"))
+        detector.detect_one_image(os.path.join(C.TEST_IMAGES, file_name), os.path.join(C.VIS_SAVE_ROOT, file_name))
     # performDetect(
     #     '/disk2/zhaoliang/projects/Kuzushiji/yolov3/tmp_img/tmp_0.jpg',
     #     configPath='./kanji/train.cfg',

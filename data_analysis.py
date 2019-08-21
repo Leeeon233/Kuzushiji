@@ -1,7 +1,7 @@
 from tqdm import tqdm
 import pandas as pd
 import numpy as np
-import config as C
+import config_m2det as C
 import matplotlib.pyplot as plt
 from collections import Counter
 import os

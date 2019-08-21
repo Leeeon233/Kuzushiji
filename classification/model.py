@@ -74,6 +74,7 @@ class VGG(nn.Module):
         x = self.l2(x)
         x = self.l3(x)
         x = self.l4(x)
+        #
         x = self.l5(x)
         x = self.l6(x)
         x = x.view(x.size(0), -1)
@@ -260,8 +261,7 @@ class VGG_ResNet(nn.Module):
         return out
 
 
-
 if __name__ == '__main__':
-    summary(VGG(num_classes=100).cuda(), (1, 64, 64))
-    summary(MyResNet(num_classes=100).cuda(), (1, 64, 64))
-    summary(VGG_ResNet(100).cuda(), (1, 64, 64))
+    summary(VGG(num_classes=1000).cuda(), (1, 64, 64))
+    summary(MyResNet(num_classes=1000).cuda(), (1, 64, 64))
+    summary(VGG_ResNet(1000).cuda(), (1, 64, 64))

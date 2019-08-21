@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-import config as C
+import config_m2det as C
 
 np.random.seed(C.SEED)
 

@@ -1,5 +1,5 @@
 import os
-
+os.environ['CUDA_VISIBLE_DEVICES'] = '2'
 import cv2
 import numpy as np
 import pandas as pd
@@ -8,19 +8,19 @@ import config as C
 from classification.classifier import Classifier
 from yolov3.darknet import Detector
 
-os.environ["CUDA_VISIBLE_DEVICES"] = '3'
+# os.environ["CUDA_VISIBLE_DEVICES"] = '3'
 
 
 class Predictor:
     def __init__(self):
         self.detector = Detector(
-            thresh=0.85,
+            thresh=0.8,
             weight_path='/disk2/zhaoliang/projects/Kuzushiji/yolov3/backup_all/train_best.weights',
             config_path='/disk2/zhaoliang/projects/Kuzushiji/yolov3/kanji/test.cfg',
             meta_path='/disk2/zhaoliang/projects/Kuzushiji/yolov3/kanji/kanji.data'
         )
         self.classifier = Classifier(
-            checkpoint='/disk2/zhaoliang/projects/Kuzushiji/classification/checkpoint500_5.pt'
+            checkpoint='/disk2/zhaoliang/projects/Kuzushiji/classification/checkpoint2000_0.4284238592865541.pt'
         )
         self._init_model_data()
 
@@ -95,7 +95,7 @@ class Predictor:
                 continue
             crop_img = self._threshold(crop_img)
             crop_img = self._resize_square_img(crop_img)
-            crop_img = np.array(crop_img).reshape((1, 64, 64))
+            crop_img = np.array(crop_img).reshape((1, C.CLS_RESIZE, C.CLS_RESIZE))
             crop_imgs.append(crop_img)
             centers.append((center_x, center_y))
         return crop_imgs, centers
@@ -108,7 +108,7 @@ class Predictor:
     def _make_laebl(self, centers, labels):
         result = ''
         for label, center in zip(labels, centers):
-            l = 'U+725B' if label == 0 else self.dict[label]
+            l = 'U+53CC' if label == 0 else self.dict[label]
             result += f'{l} {int(center[0])} {int(center[1])} '
         return result[:-1]
 
@@ -118,6 +118,7 @@ class Predictor:
         if len(boxes) == 0:
             return ''
         crop_imgs, centers = self._crop_resize(img, boxes)
+
         if len(crop_imgs) > 100:
             tmp_label = []
             for i in range(len(crop_imgs)//100+1):
@@ -183,7 +184,7 @@ if __name__ == '__main__':
     from tqdm import tqdm
     for image_name in tqdm(os.listdir(C.TEST_IMAGES)):
         image_id = image_name[:-4]
-        if os.path.exists(os.path.join(C.SUBMIT_ROOT,f'{image_id}.txt')):
+        if os.path.exists(os.path.join(C.SUBMIT_ROOT, f'{image_id}.txt')):
             continue
         print(image_id)
         p.predict_by_id(image_id)

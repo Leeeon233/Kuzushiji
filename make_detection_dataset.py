@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 import numpy as np
-import config as C
+import config_m2det as C
 import cv2
 from tqdm import tqdm
 from PIL import Image, ImageDraw, ImageFont
@@ -45,7 +45,7 @@ def crop_ori_img(img_path, labels, train):
                     flag_x = True
                 continue
 
-            crop_img, crop_labels = resize_img_box(crop_img, crop_labels)
+            # crop_img, crop_labels = resize_img_box(crop_img, crop_labels)   # TODO  就使用800*800作为输入
             if VIS:
                 visualize_training_data(crop_img, crop_labels, n)
             save_img_label(crop_img, crop_labels, f'{img_name[:-4]}_{n}', train)
@@ -80,21 +80,21 @@ def convert(size, box):
 
 
 def save_img_label(img, label, file_name, train):
-    h, w, c = img.shape
-    if os.path.exists(os.path.join(C.CROP_TRAIN_IMAGES, file_name + '.jpg')):
+    # h, w, c = img.shape
+    if os.path.exists(os.path.join(C.CROP_TRAIN_IMAGES_IMAGE, file_name + '.jpg')):
         return
-    cv2.imwrite(os.path.join(C.CROP_TRAIN_IMAGES, file_name + '.jpg'), img)
+    cv2.imwrite(os.path.join(C.CROP_TRAIN_IMAGES_IMAGE, file_name + '.jpg'), img)
 
-    with open(os.path.join(C.CROP_TRAIN_IMAGES, f'{file_name}.txt'), 'w') as f:
+    with open(os.path.join(C.CROP_TRAIN_IMAGES_LABEL, f'{file_name}.txt'), 'w') as f:
         for box in label:
             x_min, x_max, y_min, y_max = box[0], box[0] + box[2], box[1], box[1] + box[3]
-            bb = convert((w, h), [x_min, x_max, y_min, y_max])
-            f.write("0" + " " + " ".join([str(a) for a in bb]) + '\n')
+            # bb = convert((w, h), [x_min, x_max, y_min, y_max])
+            f.write(f'{0} {x_min} {x_max} {y_min} {y_max}\n')
 
     file = C.DETECTION_TRAIN_FILE if train else C.DETECTION_VAL_FILE
 
     with open(file, 'a') as f:
-        f.write(os.path.join(C.CROP_TRAIN_IMAGES, file_name + '.jpg') + '\n')
+        f.write(os.path.join(C.CROP_TRAIN_IMAGES_IMAGE, file_name + '.jpg') + '\n')
         # if np.random.randint(0, 9) < 1:
         #     val_file.write(os.path.join(C.CROP_TRAIN_IMAGES, file_name + '.jpg') + '\n')
         # else:

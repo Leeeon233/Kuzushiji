@@ -4,7 +4,11 @@ import pandas as pd
 import config as C
 import numpy as np
 import os
+import copy
+import random
+from skimage.util import random_noise
 import cv2
+random.seed = C.SEED
 
 np.random.seed(C.SEED)
 
@@ -47,6 +51,7 @@ def threshold(img):
 df_char = pd.read_csv(C.CHARS_FREQ_FILE)
 
 
+argument_num = 0
 def crop_all_char(image_name, labels, is_train):
     """
     将图片中的全部文字剪裁出来保存到csv中, label 0 是少见类, 所以label从1开始
@@ -54,6 +59,7 @@ def crop_all_char(image_name, labels, is_train):
     :param labels:
     :return:
     """
+    global argument_num
     img_path = os.path.join(C.TRAIN_IMAGES, f'{image_name}.jpg')
     labels = np.array(labels.split(' ')).reshape(-1, 5)
     img = cv2.imread(img_path)
@@ -66,23 +72,63 @@ def crop_all_char(image_name, labels, is_train):
             continue
         n += 1
         x_min, y_min, w, h = int(x_min), int(y_min), int(w), int(h)
+        # 稍微扩展一下裁剪范围
+        # x_min, y_min, w, h = int(x_min-C.CROP_PAD_SIZE), int(y_min-C.CROP_PAD_SIZE), int(w+C.CROP_PAD_SIZE*2), int(h+C.CROP_PAD_SIZE*2)
         label_index = df_char[df_char['char'] == codepoint]['idx'].values[0]
         jp_char = df_char[df_char['char'] == codepoint]['jp_char'].values[0]
+        freq = df_char[df_char['char'] == codepoint]['count'].values[0]
         crop_img = img[y_min:y_min + h, x_min:x_min + w]
         crop_img = threshold(crop_img)
         crop_img = resize_square_img(crop_img)
-
         cv2.imwrite(crop_img_path, crop_img)
         save_content = {
             'img_name': crop_img_name,
             'label': label_index + 1,
             'jp_char': jp_char,
-            'is_train': is_train
+            'is_train': 1 if is_train else 0
         }
         # save_content = [crop_img_name, label_index+1, jp_char, is_train]
         char_dict = pd.DataFrame(save_content, index=[0])  # , columns=['img_name', 'label', 'jp_char', 'is_train'])
         char_dict.to_csv(C.CHARS_DICT_FILE, mode='a', header=None, index=False)
+        if is_train:
+            if freq < C.NUM_PER_CLASS:
+                need_argument = C.NUM_PER_CLASS // freq + 1
+                for i in range(need_argument):
+                    crop_img_path = os.path.join(C.SAVE_ALL_CHARS, f'{crop_img_name}_{argument_num}.jpg')
+                    _crop_img = data_argument(crop_img)
+                    cv2.imwrite(crop_img_path, _crop_img)
+                    save_content = {
+                        'img_name': f'{crop_img_name}_{argument_num}',
+                        'label': label_index + 1,
+                        'jp_char': jp_char,
+                        'is_train': 1 if is_train else 0
+                    }
+                    # save_content = [crop_img_name, label_index+1, jp_char, is_train]
+                    char_dict = pd.DataFrame(save_content,
+                                             index=[0])  # , columns=['img_name', 'label', 'jp_char', 'is_train'])
+                    char_dict.to_csv(C.CHARS_DICT_FILE, mode='a', header=None, index=False)
+                    argument_num += 1
+                    n += 1
+
     return n
+
+
+def data_argument(image):
+    h, w = image.shape
+    img = copy.deepcopy(image)
+    # 二值化，无需噪声
+    # if random.random() < 0.5:
+    #     img = random_noise(img, mode='gaussian', clip=True) * 255
+    if random.random() < 0.7:
+        # 随机增加外边距
+        top_size = np.random.randint(0, int(0.2 * h))
+        bottom_size = np.random.randint(0, int(0.2 * h))
+        right_size = np.random.randint(0, int(0.2 * w))
+        left_size = np.random.randint(0, int(0.2 * w))
+        img = cv2.copyMakeBorder(img, top_size, bottom_size, left_size, right_size,
+                                 cv2.BORDER_CONSTANT, value=(0, 0))
+
+    return img
 
 
 def main():
@@ -98,7 +144,4 @@ def main():
 
 
 if __name__ == '__main__':
-    try:
-        main()
-    except Exception as e:
-        print(e)
+    main()
